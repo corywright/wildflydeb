@@ -1,0 +1,6 @@
+#!/bin/bash
+#/etc/init.d/wildfly stop
+rm -rf /usr/share/wildfly /var/log/wildfly
+# should become optional 
+# rm -rf /var/lib/wildfly
+deluser wildfly

@@ -1,0 +1,12 @@
+Source: wildfly
+Section: misc
+Priority: optional
+Maintainer: it-infrastructure <it.infrastructure.team@lampiris.be>
+Homepage: http://wildfly.org
+Package: wildfly
+Architecture: all
+Version: 8.1.0.final+lam.r01
+Depends: oracle-j2sdk1.7 (>= 1.7.0+update7)
+Description: Wildfly 8.1.0 Final 
+ This package provides a standard Wilfly 8.1.0 installation based on 
+ binary package provided at wildfly.org.

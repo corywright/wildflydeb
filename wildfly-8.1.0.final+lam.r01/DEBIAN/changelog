@@ -1,0 +1,5 @@
+wildfly (8.1.0.final+deb7r01-1) unstable; urgency=low
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- root <root@boulimix>  Thu, 30 Oct 2014 10:16:40 +0100

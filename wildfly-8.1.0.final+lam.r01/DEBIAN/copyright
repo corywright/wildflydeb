@@ -1,0 +1,13 @@
+This package was Debianised by root <root@boulimix> on Thu Oct 30 10:16:39 CET 2014
+
+This package was downloaded from http://download.jboss.org/wildfly/8.1.0.Final/wildfly-8.1.0.Final.tar.gz .
+
+Upstream Author: ... 
+
+Copyright ...
+
+LGPL v2 (see package's LICENCE.TXT)
+
+The packaging is Copyright 2014 root <root@boulimix> and is licenced
+under the terms of the BSD licence. On Debian systems the BSD licence can be
+found in /usr/share/common-licenses/BSD.

@@ -1,0 +1,191 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides: jboss
+# Required-Start: $local_fs $remote_fs $network $syslog
+# Required-Stop: $local_fs $remote_fs $network $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Management of JBoss AS v7.1
+### END INIT INFO
+
+# Source function library.
+.  /lib/lsb/init-functions
+
+# Set file descriptor limits
+ulimit -n 20480
+
+# Set defaults.
+
+if [ -z "$JBOSS_HOME" ]; then
+  JBOSS_HOME=/usr/share/wildfly
+fi
+export JBOSS_HOME
+
+if [ -z "$JBOSS_DATA" ]; then
+  JBOSS_DATA="${JBOSS_HOME}/standalone/data"
+fi
+
+# Load JBoss init.d configuration.
+if [ -z "$JBOSS_CONF" ]; then
+  if [ -f "/etc/wildfly/wildfly.conf" ]; then
+    JBOSS_CONF="/etc/wildfly/wildfly.conf"
+  fi
+fi
+
+[ -r "$JBOSS_CONF" ] && . "${JBOSS_CONF}"
+
+if [ -z "$JBOSS_USER" ]; then
+  JBOSS_USER=wildfly
+fi
+export JBOSS_USER
+
+if [ -z "$JBOSS_PIDFILE" ]; then
+  JBOSS_PIDFILE=/var/run/wildfly/wildfly-standalone.pid
+fi
+export JBOSS_PIDFILE
+
+if [ -z "$JBOSS_LOGDIR" ]; then
+  JBOSS_LOGDIR="/var/log/wildfly"
+fi
+
+if [ -z "$JBOSS_LOG" ]; then
+  JBOSS_LOG="${JBOSS_LOGDIR}/server.log"
+fi
+
+if [ -z "$STARTUP_WAIT" ]; then
+  STARTUP_WAIT=30
+fi
+
+if [ -z "$SHUTDOWN_WAIT" ]; then
+  SHUTDOWN_WAIT=30
+fi
+
+if [ -z "$JBOSS_CONFIG" ]; then
+  JBOSS_CONFIG=standalone.xml
+fi
+
+if [ -z "$JBOSS_IP" ]; then
+  JBOSS_IP=`ifconfig | grep "inet addr:" | grep -v 127.0.0.1 | cut -d: -f2 | awk '{print $1 }'`
+fi
+
+if [ -z "$JBOSS_MNGMT_IP" ]; then
+  JBOSS_MNGMT_IP=$JBOSS_IP
+fi
+
+JBOSS_SCRIPT=$JBOSS_HOME/bin/standalone.sh
+
+prog='wildfly'
+
+CMD_PREFIX=''
+
+if [ ! -z "$JBOSS_USER" ]; then
+  if [ -x /lib/lsb/init-functions ]; then
+    CMD_PREFIX="daemon --user $JBOSS_USER"
+  else
+    CMD_PREFIX="su - $JBOSS_USER -c"
+  fi
+fi
+
+start() {
+  log_begin_msg "Starting $prog "
+  if [ -f $JBOSS_PIDFILE ]; then
+    read ppid < $JBOSS_PIDFILE
+    if [ `ps --pid $ppid 2> /dev/null | grep -c $ppid 2> /dev/null` -eq '1' ]; then
+      log_warning_msg "$prog is already running"
+      log_end_msg 1
+      echo
+      return 1 
+    else
+      rm -f $JBOSS_PIDFILE
+    fi
+  fi
+  
+  touch $JBOSS_LOG
+  chown -R $JBOSS_USER:$JBOSS_USER $JBOSS_LOGDIR
+  chown -R $JBOSS_USER:$JBOSS_USER $JBOSS_DATA
+
+  mkdir -p $(dirname $JBOSS_PIDFILE)
+  chown -R $JBOSS_USER $(dirname $JBOSS_PIDFILE) || true
+  
+  if [ ! -z "$JBOSS_USER" ]; then
+     su - $JBOSS_USER -c "LAUNCH_JBOSS_IN_BACKGROUND=1 JBOSS_PIDFILE=$JBOSS_PIDFILE $JBOSS_SCRIPT -c $JBOSS_CONFIG -b=$JBOSS_IP -bmanagement=$JBOSS_MNGMT_IP" 2>&1 > $JBOSS_LOG &
+  fi
+  
+  count=0
+  launched=false
+
+  until [ $count -gt $STARTUP_WAIT ]
+  do
+    grep 'JBoss AS.*started in' $JBOSS_LOG > /dev/null 
+    if [ $? -eq 0 ] ; then
+      launched=true
+      break
+    fi 
+    sleep 1
+    let count=$count+1;
+    log_progress_msg .
+  done
+  log_end_msg 0  
+  return 0
+}
+
+stop() {
+  log_begin_msg "Stopping $prog " 
+  count=0;
+
+  if [ -f $JBOSS_PIDFILE ]; then
+    read kpid < $JBOSS_PIDFILE
+    let kwait=$SHUTDOWN_WAIT
+
+    # Try issuing SIGTERM
+    kill -15 $kpid 
+    until [ `ps --pid $kpid 2> /dev/null | grep -c $kpid 2> /dev/null` -eq '0' ] || [ $count -gt $kwait ]
+    do
+      sleep 1
+      let count=$count+1;
+      log_progress_msg .
+    done
+
+    if [ $count -gt $kwait ]; then
+      kill -9 $kpid
+    fi
+  fi
+  rm -f $JBOSS_PIDFILE
+  log_end_msg
+}
+
+status() {
+  if [ -f $JBOSS_PIDFILE ]; then
+    read ppid < $JBOSS_PIDFILE
+    if [ `ps --pid $ppid 2> /dev/null | grep -c $ppid 2> /dev/null` -eq '1' ]; then
+      echo "$prog is running (pid $ppid)"
+      return 0
+    else
+      echo "$prog dead but pid file exists"
+      return 1
+    fi
+  fi
+  echo "$prog is not running"
+  return 3
+}
+
+case "$1" in
+  start)
+      start
+      ;;
+  stop)
+      stop
+      ;;
+  restart)
+      $0 stop
+      $0 start
+      ;;
+  status)
+      status
+      ;;
+  *)
+      ## If no parameters are given, print which are avaiable.
+      echo "Usage: $0 {start|stop|status|restart|reload}"
+      exit 1
+      ;;
+esac

@@ -1,0 +1,12 @@
+#!/bin/bash
+useradd -d /usr/share/wildfly -l -M -r wildfly
+ln -sf /var/log/wildfly /usr/share/wildfly/standalone/log
+ln -sf /var/lib/wildfly/data /usr/share/wildfly/standalone/data
+ln -sf /usr/share/wildfly/standalone/configuration /etc/wildfly
+chown -R wildfly.wildfly /usr/share/wildfly/
+chown -R wildfly.wildfly /var/lib/wildfly/
+chown -R wildfly.wildfly /var/log/wildfly/
+insserv /etc/init.d/wildfly
+#echo "wildfly         soft    nofile          20480" >> /etc/security/limits.conf
+#echo "wildfly         soft    nofile          40960" >> /etc/security/limits.conf
+# Above are set in init.d script
